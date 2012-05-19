@@ -33,7 +33,7 @@ public class LaunchImportProductsJob {
                     .addString("inputResource", "file:./products.zip")
                     .addString("targetDirectory", "./importproductsbatch/")
                     .addString("targetFile","products.txt")
-                    .addString("date", "2010-06-27")
+                    .addString("date", "2010-06-28")
                     .toJobParameters()
             );
     }

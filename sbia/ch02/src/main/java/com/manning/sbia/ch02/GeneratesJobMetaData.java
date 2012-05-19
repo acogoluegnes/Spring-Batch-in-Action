@@ -46,6 +46,7 @@ public class GeneratesJobMetaData {
 		Calendar calendar = Calendar.getInstance(Locale.FRANCE);
 		
 		for(int i=0;i<10;i++) {
+			Thread.sleep(200); // introduces latency
 			if(i == 7) {
 				corruptedProcessing(jobLauncher, job, calendar);
 				normalProcessing(jobLauncher, job, calendar);				

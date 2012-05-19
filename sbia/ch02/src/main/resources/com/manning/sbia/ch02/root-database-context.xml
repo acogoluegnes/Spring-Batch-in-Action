@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:batch="http://www.springframework.org/schema/batch"
 	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
 	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
 		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
 		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
 
-	<bean id="dataSource" class="org.springframework.jdbc.datasource.SingleConnectionDataSource">
-		<property name="driverClassName" value="org.h2.Driver" />
-		<property name="url" value="jdbc:h2:mem:sbia_ch02;DB_CLOSE_DELAY=-1" />
-		<property name="username" value="sa" />
-		<property name="password" value="" />
-		<property name="suppressClose" value="true" />
+
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+		<property name="url" value="jdbc:mysql://localhost:3306/sbia_ch02" />
+		<property name="username" value="root" />
+		<property name="password" value="root" />
 	</bean>
 
-	<jdbc:initialize-database data-source="dataSource">
-		<jdbc:script location="classpath:/org/springframework/batch/core/schema-h2.sql"/>
+	<jdbc:initialize-database data-source="dataSource" ignore-failures="DROPS">
+		<jdbc:script location="classpath:/org/springframework/batch/core/schema-drop-mysql.sql" />
+		<jdbc:script location="classpath:/org/springframework/batch/core/schema-mysql.sql" />
 		<jdbc:script location="classpath:/create-tables.sql" />
 	</jdbc:initialize-database>
 
