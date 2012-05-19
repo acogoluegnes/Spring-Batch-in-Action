@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+
+	<job id="importProductsJob" xmlns="http://www.springframework.org/schema/batch">
+		<step id="importProductsStep">
+			<tasklet>
+				<chunk reader="reader" writer="writer" commit-interval="3" skip-limit="2">
+					<skippable-exception-classes>
+						<include class="org.springframework.batch.item.file.FlatFileParseException" />
+					</skippable-exception-classes>
+				</chunk>
+				<listeners>
+					<listener ref="slf4kSkipListener" />
+					<listener ref="dataBaseSkipListener" />
+				</listeners>
+			</tasklet>			
+		</step>
+	</job>
+	
+	<job id="importProductsJobWithSkipPolicy" xmlns="http://www.springframework.org/schema/batch">
+		<step id="importProductsStepWithSkipPolicy">
+			<tasklet>
+				<chunk reader="reader" writer="writer" commit-interval="3" skip-policy="skipPolicy" />
+			</tasklet>			
+		</step>
+	</job>
+	
+	<bean id="skipPolicy" class="com.manning.sbia.ch08.skip.ExceptionSkipPolicy">
+		<constructor-arg value="org.springframework.batch.item.file.FlatFileParseException" />
+	</bean>
+	
+	<bean id="slf4kSkipListener" class="com.manning.sbia.ch08.skip.Slf4jSkipListener" />
+	
+	<bean id="dataBaseSkipListener" class="com.manning.sbia.ch08.skip.DatabaseSkipListener">
+		<constructor-arg ref="dataSource" />
+	</bean>
+	
+	<bean id="reader" class="org.springframework.batch.item.file.FlatFileItemReader" scope="step">
+		<property name="resource" value="#{jobParameters['inputFile']}" />
+		<property name="linesToSkip" value="1" />
+		<property name="lineMapper">
+			<bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+				<property name="lineTokenizer">
+					<bean class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+						<property name="names" value="PRODUCT_ID,NAME,DESCRIPTION,PRICE" />
+					</bean>
+				</property>
+				<property name="fieldSetMapper">
+					<bean class="com.manning.sbia.ch01.batch.ProductFieldSetMapper" />
+				</property>
+			</bean>
+		</property>
+	</bean>
+	
+	
+	<bean id="writer" class="com.manning.sbia.ch01.batch.ProductJdbcItemWriter">
+		<constructor-arg ref="dataSource" />
+	</bean>
+	
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<batch:job-repository id="jobRepository"
+	  data-source="dataSource" 
+	  transaction-manager="transactionManager" 
+	  />
+	
+	<bean id="jobLauncher"
+		class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+	
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.SingleConnectionDataSource">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<property name="url" value="jdbc:h2:mem:sbia_ch08_skip;DB_CLOSE_DELAY=-1" />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+		<property name="suppressClose" value="true" />
+	</bean>
+
+	<jdbc:initialize-database data-source="dataSource">
+		<jdbc:script location="classpath:/org/springframework/batch/core/schema-h2.sql"/>
+		<jdbc:script location="classpath:/create-tables.sql" />
+		<jdbc:script location="classpath:/com/manning/sbia/ch08/skip/create-skip-log-table.sql" />
+	</jdbc:initialize-database>
+	
+	<bean class="org.springframework.jdbc.core.JdbcTemplate">
+		<constructor-arg ref="dataSource" />
+	</bean>
+
+</beans>

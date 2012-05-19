@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.SingleConnectionDataSource">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<property name="url" value="jdbc:h2:." />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+		<property name="suppressClose" value="true" />
+	</bean>
+
+	<jdbc:initialize-database data-source="dataSource">
+		<jdbc:script location="classpath:/org/springframework/batch/core/schema-h2.sql"/>
+		<jdbc:script location="classpath:/create-tables.sql" />
+	</jdbc:initialize-database>
+
+	<bean id="transactionManager" lazy-init="true"
+    	class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<batch:job-repository id="jobRepository"
+                data-source="dataSource"
+                transaction-manager="transactionManager"
+                isolation-level-for-create="SERIALIZABLE"
+                table-prefix="BATCH_"
+	/>
+
+ 	<bean id="jobLauncher" class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+ 		<property name="jobRepository" ref="jobRepository" />
+ 	</bean>
+ 	
+ 	<job id="importProductsJob" xmlns="http://www.springframework.org/schema/batch">
+		<listeners>
+    		<listener ref="importProductsJobListener"/>
+  		</listeners>
+ 		<step id="readWrite">
+ 			<tasklet>
+				<listeners>
+    	    		<listener ref="readWriteStepListener"/>
+      			</listeners>
+ 				<chunk reader="productItemReader" writer="productItemWriter" commit-interval="100" />
+ 			</tasklet>
+ 		</step>
+ 	</job>
+ 	
+ 	<bean id="importProductsJobListener" class="com.manning.sbia.ch03.listener.ImportProductsJobListener"/>
+ 	<bean id="readWriteStepListener" class="com.manning.sbia.ch03.listener.ImportProductsExecutionListener"/>
+ 	
+ 	<bean id="productItemReader"
+  		class="org.springframework.batch.item.file.FlatFileItemReader">
+ 		<property name="resource" value="classpath:/com/manning/sbia/ch03/input/products-delimited.txt"/>
+		<property name="linesToSkip" value="1"/>
+ 		<property name="lineMapper" ref="productLineMapper"/>
+ 	</bean>
+
+ 	<bean id="productLineMapper"
+ 		class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+ 		<property name="lineTokenizer" ref="productLineTokenizer"/>
+ 		<property name="fieldSetMapper" ref="productFieldSetMapper"/>
+ 	</bean>
+
+	<bean id=" productLineTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+ 		<property name="delimiter" value=","/>
+ 		<property name="names" value="id,name,description,price"/>
+	</bean>
+
+	<bean id="productFieldSetMapper"
+		class="org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper">
+		<property name="prototypeBeanName" value="product"/>
+	</bean>
+
+	<bean id="product" class="com.manning.sbia.ch03.Product" scope="prototype"/>
+
+	<bean id="productPreparedStatementSetter" class="com.manning.sbia.ch03.ProductPreparedStatementSetter"/>
+
+	<bean id="productItemWriter" class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="dataSource"/>
+		<property name="sql" value="insert into product (id,name,description,price) values(?,?,?,?)"/>
+		<property name="itemPreparedStatementSetter" ref="productPreparedStatementSetter"/>
+	</bean>
+	
+
+</beans>

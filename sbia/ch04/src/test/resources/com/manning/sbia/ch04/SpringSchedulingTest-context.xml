@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd
+		http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-3.0.xsd">
+
+	<!-- scheduling infrastructure -->
+	<task:scheduler id="scheduler" pool-size="10" />
+		
+	<!-- xml scheduling -->
+	<task:scheduled-tasks scheduler="scheduler">
+		<task:scheduled ref="springSchedulingLauncher" method="launch" fixed-rate="1000" />
+	</task:scheduled-tasks>
+		
+	<batch:job id="xmlJob">
+		<batch:step id="xmlStep">
+			<batch:tasklet>
+				<bean class="com.manning.sbia.ch04.CountDownTasklet">
+					<property name="countDownLatch" ref="xmlCountDownLatch" />
+				</bean>
+			</batch:tasklet>		
+		</batch:step>
+	</batch:job>
+
+	<bean id="xmlCountDownLatch" class="java.util.concurrent.CountDownLatch">
+		<constructor-arg value="2" />
+	</bean>
+
+	<bean id="springSchedulingLauncher" class="com.manning.sbia.ch04.SpringSchedulingLauncher">
+		<property name="job" ref="xmlJob" />
+		<property name="jobLauncher" ref="jobLauncher" />
+	</bean>
+	
+	<!-- annotation scheduling -->
+	<task:annotation-driven scheduler="scheduler" />
+	
+	<batch:job id="annotationJob">
+		<batch:step id="annotationStep">
+			<batch:tasklet>
+				<bean class="com.manning.sbia.ch04.CountDownTasklet">
+					<property name="countDownLatch" ref="annotationCountDownLatch" />
+				</bean>
+			</batch:tasklet>		
+		</batch:step>
+	</batch:job>
+
+	<bean id="annotationCountDownLatch" class="java.util.concurrent.CountDownLatch">
+		<constructor-arg value="2" />
+	</bean>
+
+	<bean id="springSchedulingAnnotatedLauncher" class="com.manning.sbia.ch04.SpringSchedulingAnnotatedLauncher">
+		<property name="job" ref="annotationJob" />
+		<property name="jobLauncher" ref="jobLauncher" />
+	</bean>
+	
+	<!-- batch infrastructure -->
+	<bean id="transactionManager" class="org.springframework.batch.support.transaction.ResourcelessTransactionManager" />
+
+	<bean id="jobRepository" class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean">
+		<property name="transactionManager" ref="transactionManager" />
+	</bean>
+
+	<bean id="jobLauncher" class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+	
+
+</beans>

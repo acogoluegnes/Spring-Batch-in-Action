@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<import resource="../batch-infrastructure-test.xml" />
+
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.SingleConnectionDataSource">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<property name="url" value="jdbc:h2:." />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+		<property name="suppressClose" value="true" />
+	</bean>
+
+	<jdbc:initialize-database data-source="dataSource">
+		<jdbc:script location="classpath:/create-tables.sql" />
+	</jdbc:initialize-database>
+
+	<batch:job id="readWriteMultiThreadedJob">
+		<batch:step id="readWriteMultiThreadedStep">
+			<batch:tasklet task-executor="taskExecutor">
+				<batch:chunk reader="productItemReader" writer="productItemWriter"
+					commit-interval="10" />
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+
+	<bean id="taskExecutor"
+		class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+		<property name="corePoolSize" value="5" />
+		<property name="maxPoolSize" value="5" />
+	</bean>
+
+	<bean id="productItemReader" class="com.manning.sbia.ch13.multithreadedstep.SynchronizingItemReader">
+		<property name="delegate" ref="targetProductItemReader" />
+	</bean>
+
+	<bean id="targetProductItemReader"
+		class="org.springframework.batch.item.database.JdbcCursorItemReader">
+		<property name="dataSource" ref="dataSource" />
+		<property name="sql"
+			value="select id, name, description, price from product where processed=false" />
+		<property name="saveState" value="false" />
+		<property name="rowMapper" ref="productRowMapper" />
+	</bean>
+
+	<bean id="productRowMapper"
+			class="com.manning.sbia.ch13.ProductRowMapper"/>
+
+	<bean id="productItemWriter" class="com.manning.sbia.ch13.multithreadedstep.ProductItemWriter">
+		<property name="dataSource" ref="dataSource"/>
+	</bean>
+</beans>

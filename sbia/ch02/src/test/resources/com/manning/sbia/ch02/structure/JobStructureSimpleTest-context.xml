@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<bean id="transactionManager" class="org.springframework.batch.support.transaction.ResourcelessTransactionManager" />
+	
+	<bean id="jobRepository" class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean">
+		<property name="transactionManager" ref="transactionManager" />
+ 	</bean>
+ 	
+ 	<bean id="jobLauncher" class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+ 		<property name="jobRepository" ref="jobRepository" />
+ 	</bean>
+ 	
+ 	<job id="importProductsJob" xmlns="http://www.springframework.org/schema/batch">
+ 		<step id="decompress" next="readWrite">
+ 			<tasklet ref="decompressTasklet" />
+ 		</step>
+ 		<step id="readWrite" next="clean">
+ 			<tasklet>
+ 				<chunk reader="reader" writer="writer" commit-interval="100" />
+ 			</tasklet>
+ 		</step>
+ 		<step id="clean">
+ 			<tasklet ref="cleanTasklet" />
+ 		</step>
+ 	</job>
+ 	
+ 	<bean id="skippedDecider" class="com.manning.sbia.ch02.structure.SkippedDecider" />
+ 	
+ 	<bean id="decompressTasklet" class="com.manning.sbia.ch02.structure.DummyTasklet" 
+ 		name="cleanTasklet,generateReportTasklet,sendReportTasklet"
+ 	/>
+ 	
+ 	<bean id="reader" class="com.manning.sbia.ch02.structure.DummyItemReader" />
+ 	<bean id="writer" class="com.manning.sbia.ch02.structure.DummyItemWriter" />
+
+</beans>

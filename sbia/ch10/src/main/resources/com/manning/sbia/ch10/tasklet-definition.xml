@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+
+	<bean id="batchService" class="org.mockito.Mockito" factory-method="mock">
+		<constructor-arg value="com.manning.sbia.ch10.batch.BatchService" />
+	</bean>
+	
+	<bean id="downloadTasklet" class="com.manning.sbia.ch10.tasklet.DownloadTasklet" scope="step">
+		<property name="batchService" ref="batchService" />
+		<property name="targetFile" value="#{jobParameters['archiveFile']}" />
+	</bean>
+	
+	<bean id="decompressTasklet" class="com.manning.sbia.ch10.tasklet.DecompressTasklet" scope="step">
+		<property name="batchService" ref="batchService" />
+		<property name="inputFile" value="#{jobParameters['archiveFile']}" />
+		<property name="outputDirectory" value="#{jobParameters['workingDirectory']}" />
+	</bean>
+	
+	<bean id="verifyTasklet" class="com.manning.sbia.ch10.tasklet.VerifyTasklet" scope="step">
+		<property name="batchService" ref="batchService" />
+		<property name="outputDirectory" value="#{jobParameters['workingDirectory']}" />
+		<property name="importMetadataHolder" ref="importMetadataHolder" />
+	</bean>
+	
+	<bean id="importMetadataHolder" class="com.manning.sbia.ch10.batch.ImportMetadataHolder" />
+	
+	<bean id="readWriteProductsTasklet" class="org.mockito.Mockito" factory-method="mock">
+		<constructor-arg value="org.springframework.batch.core.step.tasklet.Tasklet" />
+	</bean>
+	
+	<bean id="generateReportTasklet" class="com.manning.sbia.ch10.tasklet.GenerateReportTasklet">
+		<property name="batchService" ref="batchService" />
+	</bean>
+	
+	<bean id="indexTasklet" class="org.mockito.Mockito" factory-method="mock">
+		<constructor-arg value="org.springframework.batch.core.step.tasklet.Tasklet" />
+	</bean>
+	
+	<bean id="trackImportTasklet" class="com.manning.sbia.ch10.tasklet.TrackImportWithHolderTasklet">
+		<property name="batchService" ref="batchService" />
+		<property name="importMetadataHolder" ref="importMetadataHolder" />
+	</bean>
+	
+	<bean id="cleanTasklet" class="com.manning.sbia.ch10.tasklet.CleanTasklet" scope="step">
+		<property name="batchService" ref="batchService" />
+		<property name="outputDirectory" value="#{jobParameters['workingDirectory']}" />
+	</bean>
+
+</beans>

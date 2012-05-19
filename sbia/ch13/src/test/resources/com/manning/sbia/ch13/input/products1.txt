@@ -1,0 +1,4 @@
+PRODUCT_ID,NAME,DESCRIPTION,SPECIFIC,PRICE
+PRB....734,Spring Batch in action,,Manning,34.95
+PRB....735,Spring Roo in action,,Manning,34.95
+PRB....736,Spring in action,,Manning,44.95

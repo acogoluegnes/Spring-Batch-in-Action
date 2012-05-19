@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+	
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<batch:job-repository id="jobRepository"
+	  data-source="dataSource" 
+	  transaction-manager="transactionManager" 
+	  />
+
+	<jdbc:initialize-database data-source="dataSource">
+		<jdbc:script location="classpath:/org/springframework/batch/core/schema-h2.sql"/>
+	</jdbc:initialize-database>
+
+	<bean class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+	
+	<bean id="service" class="org.mockito.Mockito" factory-method="mock">
+		<constructor-arg value="com.manning.sbia.ch08.BusinessService" />
+	</bean>
+
+	<bean id="reader" class="com.manning.sbia.ch08.DummyItemReader">
+		<constructor-arg ref="service" />
+	</bean>
+
+	<bean id="processor" class="com.manning.sbia.ch08.DummyItemProcessor">
+		<constructor-arg ref="service" />
+	</bean>
+
+	<bean id="writer" class="com.manning.sbia.ch08.DummyItemWriter">
+		<constructor-arg ref="service" />
+	</bean>
+	
+	<bean id="skipListener" class="org.mockito.Mockito" factory-method="mock">
+		<constructor-arg value="org.springframework.batch.core.SkipListener"/>
+	</bean>
+	
+	
+
+</beans>

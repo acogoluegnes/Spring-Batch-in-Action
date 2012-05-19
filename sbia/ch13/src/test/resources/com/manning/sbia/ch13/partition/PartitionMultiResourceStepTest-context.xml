@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:batch="http://www.springframework.org/schema/batch"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<import resource="../batch-infrastructure-test.xml" />
+
+	<batch:job id="partitionImportProductsJob">
+		<batch:step id="readWriteProducts">
+			<batch:partition step="partitionReadWriteProducts"
+				partitioner="partitioner">
+				<batch:handler grid-size="2" task-executor="taskExecutor" />
+			</batch:partition>
+		</batch:step>
+	</batch:job>
+
+	<batch:step id="partitionReadWriteProducts">
+		<batch:tasklet>
+			<batch:chunk reader="productItemReader" writer="writer" commit-interval="10"/>
+		</batch:tasklet>
+	</batch:step>
+
+	<bean id="productItemReader" class="com.manning.sbia.ch13.WrappedItemReader">
+		<property name="delegate" ref="productItemReaderTarget"/>
+	</bean>
+
+ 	<bean id="productItemReaderTarget"  scope="step"
+  		class="org.springframework.batch.item.file.FlatFileItemReader">
+ 		<property name="resource" value="#{stepExecutionContext[fileName]}"/>
+		<property name="linesToSkip" value="1"/>
+ 		<property name="lineMapper" ref="productLineMapper"/>
+ 	</bean>
+
+ 	<bean id="productLineMapper"
+ 		class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+ 		<property name="lineTokenizer" ref="productLineTokenizer"/>
+ 		<property name="fieldSetMapper" ref="productFieldSetMapper"/>
+ 	</bean>
+
+	<bean id=" productLineTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+ 		<property name="delimiter" value=","/>
+ 		<property name="names" value="id,name,description,specific,price"/>
+	</bean>
+
+	<bean id="productFieldSetMapper"
+		class="com.manning.sbia.ch13.ProductFieldSetMapper"/>
+
+	<bean id="writer" class="com.manning.sbia.ch13.DummyProductWriter" scope="step"/>
+
+	<bean id="partitioner"
+		class="org.springframework.batch.core.partition.support.MultiResourcePartitioner">
+		<property name="keyName" value="fileName" />
+		<property name="resources"
+			value="classpath:/com/manning/sbia/ch13/input/products*.txt" />
+	</bean>
+
+	<bean id="taskExecutor"
+		class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+		<property name="corePoolSize" value="5" />
+		<property name="maxPoolSize" value="5" />
+	</bean>
+</beans>

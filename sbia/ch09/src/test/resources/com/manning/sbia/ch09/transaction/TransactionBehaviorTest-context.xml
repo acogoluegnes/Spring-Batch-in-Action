@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<import resource="classpath:/com/manning/sbia/ch09/robustness-context.xml" />
+
+	<batch:job id="job">
+		<batch:step id="step">
+			<batch:tasklet>
+				<batch:chunk reader="reader" processor="processor" writer="writer" 
+					commit-interval="5" skip-limit="5">
+					<batch:skippable-exception-classes>
+						<batch:include
+							class="org.springframework.batch.item.validator.ValidationException" />
+					</batch:skippable-exception-classes>
+				</batch:chunk>
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+
+	<batch:job id="noRollbackJob">
+		<batch:step id="noRollbackJobStep">
+			<batch:tasklet>
+				<batch:chunk reader="reader" processor="processor" writer="writer" 
+					commit-interval="5" skip-limit="5">
+					<batch:skippable-exception-classes>
+						<batch:include
+							class="org.springframework.batch.item.validator.ValidationException" />
+					</batch:skippable-exception-classes>
+				</batch:chunk>
+				<batch:no-rollback-exception-classes>
+					<batch:include class="org.springframework.batch.item.validator.ValidationException"/>
+				</batch:no-rollback-exception-classes>
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+	
+	<batch:job id="notTransactionalReaderJob">
+		<batch:step id="notTransactionalReaderJobStep">
+			<batch:tasklet>
+				<batch:chunk reader="reader" processor="processor" writer="writer" 
+					commit-interval="5" skip-limit="5">
+					<batch:skippable-exception-classes>
+						<batch:include
+							class="org.springframework.batch.item.validator.ValidationException" />
+					</batch:skippable-exception-classes>
+				</batch:chunk>
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+	
+	<batch:job id="transactionalReaderJob">
+		<batch:step id="transactionalReaderJobStep">
+			<batch:tasklet>
+				<batch:chunk reader="jmsReader" processor="processor" writer="writer" 
+					commit-interval="5" reader-transactional-queue="true"
+					skip-limit="5">
+					<batch:skippable-exception-classes>
+						<batch:include class="org.springframework.dao.DeadlockLoserDataAccessException" />
+					</batch:skippable-exception-classes>
+				</batch:chunk>
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+	
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.SingleConnectionDataSource">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<property name="url" value="jdbc:h2:mem:sbia_ch09_transaction_behavior;DB_CLOSE_DELAY=-1" />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+		<property name="suppressClose" value="true" />
+	</bean>
+	
+	<bean id="connectionFactory" class="org.springframework.jms.connection.CachingConnectionFactory">
+		<property name="targetConnectionFactory">
+			<bean class="org.apache.activemq.ActiveMQConnectionFactory">
+				<property name="brokerURL" value="vm://embedded?broker.persistent=false"/>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="productQueue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg value="sbia.queue.product"/>
+	</bean>
+	
+	<bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+		<property name="connectionFactory" ref="connectionFactory" />
+		<property name="sessionTransacted" value="true" />
+		<property name="defaultDestination" ref="productQueue" />
+		<property name="receiveTimeout" value="100" />
+	</bean>
+	
+	<bean id="jmsReader" class="org.springframework.batch.item.jms.JmsItemReader">
+		<property name="jmsTemplate" ref="jmsTemplate" />
+	</bean>
+	
+	<bean id="productQueueView" class="org.springframework.jmx.access.MBeanProxyFactoryBean">
+		<property name="proxyInterface" value="org.apache.activemq.broker.jmx.QueueViewMBean"/>
+		<property name="objectName" value="org.apache.activemq:BrokerName=embedded,Type=Queue,Destination=sbia.queue.product"/>
+	</bean>
+	
+</beans>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+	
+	<int:channel id="job-requests" />
+	
+	<int:service-activator input-channel="job-requests" output-channel="job-executions">
+		<bean class="com.manning.sbia.ch11.integration.JobLaunchingMessageHandler">
+			<constructor-arg ref="jobRegistry" />
+			<constructor-arg ref="jobLauncher" />
+		</bean>
+	</int:service-activator>
+	
+	<int:channel id="job-requests-as-string" />
+	
+	<int:service-activator input-channel="job-requests-as-string" output-channel="job-requests">
+		<bean class="com.manning.sbia.ch11.integration.StringToJobLaunchRequestAdapter" />
+	</int:service-activator>	
+
+</beans>

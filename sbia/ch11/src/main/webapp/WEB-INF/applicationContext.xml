@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:int-http="http://www.springframework.org/schema/integration/http"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:int-stream="http://www.springframework.org/schema/integration/stream"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:int-file="http://www.springframework.org/schema/integration/file"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/integration/http http://www.springframework.org/schema/integration/http/spring-integration-http-2.0.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.0.xsd
+		http://www.springframework.org/schema/integration/file http://www.springframework.org/schema/integration/file/spring-integration-file-2.0.xsd
+		http://www.springframework.org/schema/integration/stream http://www.springframework.org/schema/integration/stream/spring-integration-stream-2.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd">
+
+	<import resource="classpath:/com/manning/sbia/ch11/enterprise-integration-infrastructure.xml" />
+	<import resource="classpath:/com/manning/sbia/ch11/data-access.xml" />
+	<import resource="classpath:/com/manning/sbia/ch11/batch-infrastructure.xml" />
+	<import resource="classpath:/com/manning/sbia/ch11/integration-job-launching.xml" />
+	<import resource="classpath:/com/manning/sbia/ch11/import-products-job.xml" />
+	<import resource="classpath:/com/manning/sbia/ch11/xml-marshalling.xml" />
+	
+		
+	<int:channel id="job-executions">
+		<int:queue capacity="10" />
+	</int:channel>
+	
+	<int:gateway id="productImportGateway" 
+		service-interface="com.manning.sbia.ch11.integration.ProductImportGateway" 
+		default-request-channel="product-imports-as-string" />
+
+	<int:channel id="product-imports-as-string" />	
+	
+	<int-file:outbound-channel-adapter directory="file:${product.import.pickup.dir}" auto-create-directory="true"
+		channel="product-imports-as-string"
+		filename-generator="productImportFileNameGenerator"
+	/>
+	
+	<bean id="productImportFileNameGenerator" class="com.manning.sbia.ch11.integration.ProductImportFileNameGenerator" />	
+	
+	<int-file:inbound-channel-adapter directory="file:${product.import.pickup.dir}" channel="product-imports"
+ 		auto-create-directory="true" filename-pattern="*.xml">
+ 		<int:poller fixed-rate="500" />
+ 	</int-file:inbound-channel-adapter>
+ 	
+ 	<int:service-activator input-channel="product-imports" output-channel="job-requests">
+ 		<bean class="com.manning.sbia.ch11.integration.ProductImportToJobLaunchRequestHandler" />
+ 	</int:service-activator>
+
+</beans>

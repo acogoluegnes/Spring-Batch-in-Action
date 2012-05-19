@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:int-stream="http://www.springframework.org/schema/integration/stream"
+	xsi:schemaLocation="http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.0.xsd
+		http://www.springframework.org/schema/integration/stream http://www.springframework.org/schema/integration/stream/spring-integration-stream-2.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<import resource="classpath:/com/manning/sbia/ch11/batch-infrastructure-test.xml" />
+	<import resource="classpath:/com/manning/sbia/ch11/integration-job-launching.xml" />
+	
+	<batch:job id="echoJob">
+		<batch:step id="echoStep">
+			<batch:tasklet>
+				<bean class="com.manning.sbia.ch11.EchoJobParametersTasklet" />
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+	
+	<int-stream:stdout-channel-adapter id="job-executions" />
+
+</beans>

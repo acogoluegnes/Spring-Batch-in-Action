@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd">
+
+	<import resource="batch-infrastructure-context.xml" />
+	
+	<batch:job id="readWriteJob">
+		<batch:step id="readWriteStep">
+			<batch:tasklet>
+				<batch:chunk  reader="reader" processor="processor" writer="writer" commit-interval="2" />
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+	
+	<bean id="reader" class="org.springframework.batch.item.database.JdbcCursorItemReader">
+	    <property name="dataSource" ref="dataSource"/>
+	    <property name="sql" value="select id from product where update_timestamp &gt; ?" />
+	    <property name="preparedStatementSetter">
+	    	<bean class="org.springframework.jdbc.core.ArgPreparedStatementSetter" scope="step">
+	    		<constructor-arg value="#{jobParameters['updateTimestampBound']}" />
+	    	</bean>
+	    </property>
+	    <property name="rowMapper">
+	    	<bean class="org.springframework.jdbc.core.SingleColumnRowMapper">
+	    		<constructor-arg value="java.lang.String" />
+	    	</bean>
+	    </property>
+	</bean>
+	
+	<bean id="processor" class="com.manning.sbia.ch07.IdToProductItemProcessor">
+		<property name="productDao" ref="productDao" />
+	</bean>
+	
+	<bean id="productDao" class="com.manning.sbia.ch07.JdbcProductDao">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<bean id="writer" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+    	<property name="resource" value="#{jobParameters['targetFile']}" />
+    	<property name="lineAggregator">
+        	<bean class="org.springframework.batch.item.file.transform.PassThroughLineAggregator"/>
+    	</property>
+	</bean>
+	
+</beans>

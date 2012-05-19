@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+    <import resource="classpath:com/manning/sbia/ch06/test-batch-infrastructure-context.xml" />
+    <import resource="classpath:com/manning/sbia/ch06/test-batch-reader-context.xml" />
+
+ 	<job id="writeProductsJob" xmlns="http://www.springframework.org/schema/batch">
+ 		<step id="readWrite">
+ 			<tasklet>
+ 				<chunk reader="productItemReader" writer="productItemWriter" commit-interval="10" />
+ 			</tasklet>
+ 		</step>
+ 	</job>
+
+ 	<bean id="productItemWriter" class="org.springframework.batch.item.adapter.ItemWriterAdapter">
+        <property name="targetObject" ref="productService" />
+        <property name="targetMethod" value="write" />
+    </bean>
+    
+    <bean id="productService" class="com.manning.sbia.ch06.service.ProductService" />
+
+</beans>

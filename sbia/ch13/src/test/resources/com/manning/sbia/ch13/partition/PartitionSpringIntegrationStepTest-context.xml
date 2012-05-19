@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:jms="http://www.springframework.org/schema/jms"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xmlns:int-stream="http://www.springframework.org/schema/integration/stream"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+		http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms-3.0.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.0.xsd
+		http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-3.0.xsd
+		http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms-2.0.xsd
+		http://www.springframework.org/schema/integration/stream http://www.springframework.org/schema/integration/stream/spring-integration-stream-2.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd">
+
+	<context:annotation-config />
+
+	<import resource="../batch-infrastructure-test.xml" />
+
+	<batch:job id="partitionImportProductsJob">
+		<batch:step id="readWriteProducts">
+			<batch:partition
+				partitioner="partitioner" handler="partitionHandler" />
+		</batch:step>
+	</batch:job>
+
+	<batch:step id="remoteStep">
+		<batch:tasklet>
+			<batch:chunk reader="productItemReader" writer="writer" commit-interval="10"/>
+		</batch:tasklet>
+	</batch:step>
+
+	<bean id="productItemReader" class="com.manning.sbia.ch13.WrappedItemReader">
+		<property name="delegate" ref="productItemReaderTarget"/>
+	</bean>
+
+ 	<bean id="productItemReaderTarget" scope="step"
+  		class="org.springframework.batch.item.file.FlatFileItemReader">
+ 		<property name="resource" value="#{stepExecutionContext[fileName]}"/>
+		<property name="linesToSkip" value="1"/>
+ 		<property name="lineMapper" ref="productLineMapper"/>
+ 	</bean>
+
+ 	<bean id="productLineMapper"
+ 		class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+ 		<property name="lineTokenizer" ref="productLineTokenizer"/>
+ 		<property name="fieldSetMapper" ref="productFieldSetMapper"/>
+ 	</bean>
+
+	<bean id=" productLineTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+ 		<property name="delimiter" value=","/>
+ 		<property name="names" value="id,name,description,specific,price"/>
+	</bean>
+
+	<bean id="productFieldSetMapper"
+		class="com.manning.sbia.ch13.ProductFieldSetMapper"/>
+
+	<bean id="writer" class="com.manning.sbia.ch13.DummyProductWriter" scope="step"/>
+
+	<bean id="partitioner"
+		class="org.springframework.batch.core.partition.support.MultiResourcePartitioner">
+		<property name="keyName" value="fileName" />
+		<property name="resources"
+			value="classpath:/com/manning/sbia/ch13/input/products*.txt" />
+	</bean>
+
+	<int-jms:outbound-channel-adapter connection-factory="connectionFactory" channel="requests"
+		destination-name="requests" />
+	<int:channel id="requests" />
+	<int:channel id="incoming" />
+	
+	<int:transformer input-channel="incoming" output-channel="replies" ref="headerExtractor" method="extract" />
+
+	<bean id="partitionHandler" class="org.springframework.batch.integration.partition.MessageChannelPartitionHandler">
+		<property name="messagingOperations">
+			<bean class="org.springframework.integration.core.MessagingTemplate">
+				<property name="defaultChannel" ref="requests" />
+				<property name="receiveTimeout" value="10000" />
+			</bean>
+		</property>
+		<property name="replyChannel" ref="replies"/>
+		<property name="stepName" value="remoteStep" />
+		<property name="gridSize" value="2" />
+	</bean>
+
+	<bean class="org.springframework.beans.factory.config.CustomScopeConfigurer">
+		<property name="scopes">
+			<map>
+				<entry key="thread">
+					<bean class="org.springframework.context.support.SimpleThreadScope" />
+				</entry>
+			</map>
+		</property>
+	</bean>
+
+	<!-- int:aggregator ref="partitionHandler" send-timeout="10000" input-channel="requests" output-channel="replies">
+		<int:poller>
+			<int:interval-trigger interval="10" />
+		</int:poller>
+	</int:aggregator -->
+	
+	<int:channel id="replies" scope="thread">
+		<int:queue />
+		<int:interceptors>
+			<bean id="pollerInterceptor" class="org.springframework.batch.integration.chunk.MessageSourcePollerInterceptor">
+				<property name="messageSource">
+					<bean class="org.springframework.integration.jms.JmsDestinationPollingSource">
+						<constructor-arg>
+							<bean class="org.springframework.jms.core.JmsTemplate">
+								<property name="connectionFactory" ref="connectionFactory" />
+								<property name="defaultDestinationName" value="replies" />
+								<property name="receiveTimeout" value="100" />
+							</bean>
+						</constructor-arg>
+					</bean>
+				</property>
+				<property name="channel" ref="incoming"/>
+			</bean>
+		</int:interceptors>
+	</int:channel>
+
+	<bean id="headerExtractor" class="org.springframework.batch.integration.chunk.JmsRedeliveredExtractor"/>
+	
+	<bean id="taskExecutor"
+		class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+		<property name="corePoolSize" value="5" />
+		<property name="maxPoolSize" value="5" />
+	</bean>
+
+	<jms:listener-container connection-factory="connectionFactory" transaction-manager="transactionManager"
+		acknowledge="transacted" concurrency="1">
+		<jms:listener destination="requests" response-destination="replies" ref="stepExecutionRequestHandler" method="handle" />
+	</jms:listener-container>
+
+	<bean id="stepExecutionRequestHandler" class="org.springframework.batch.integration.partition.StepExecutionRequestHandler">
+		<property name="jobExplorer" ref="jobExplorer"/>
+		<property name="stepLocator" ref="stepLocator"/>
+	</bean>
+
+	<bean id="stepLocator" class="org.springframework.batch.integration.partition.BeanFactoryStepLocator" />
+
+	<bean id="jobExplorer" class="org.springframework.batch.core.explore.support.MapJobExplorerFactoryBean">
+		<property name="repositoryFactory" ref="&amp;jobRepository" />
+	</bean>
+
+	<bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+		<property name="connectionFactory" ref="connectionFactory" />
+		<property name="receiveTimeout" value="100" />
+		<property name="sessionTransacted" value="true" />
+	</bean>
+
+	<bean id="connectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory" depends-on="brokerService">
+		<property name="brokerURL" value="vm://localhost?broker.persistent=false"/>
+	</bean>
+
+	<bean id="brokerService" class="org.apache.activemq.broker.BrokerService" init-method="start"
+		destroy-method="stop">
+		<property name="brokerName" value="localhost" />
+		<property name="useJmx" value="false"/>
+		<property name="transportConnectorURIs">
+			<list>
+				<value>vm://127.0.0.1</value>
+			</list>
+		</property>
+		<property name="persistenceAdapter">
+			<bean class="org.apache.activemq.store.memory.MemoryPersistenceAdapter"/>
+		</property>
+	</bean>
+</beans>

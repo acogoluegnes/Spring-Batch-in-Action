@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<products>
+  <product>
+    <id>PR....210</id>
+    <name>BlackBerry 8100 Pearl</name>
+    <description/>
+    <price>124.60</price>
+  </product>
+  <product>
+    <id>PR....211</id>
+    <name>Sony Ericsson W810i</name>
+    <description/>
+    <price>139.45</price>
+  </product>
+  <product>
+    <id>PR....212</id>
+    <name>Samsung MM-A900M Ace</name>
+    <description/>
+    <price>97.80</price>
+  </product>
+  <product>
+    <id>PR....213</id>
+    <name>Toshiba M285-E 14</name>
+    <description/>
+    <price>166.20</price>
+  </product>
+  <product>
+    <id>PR....214</id>
+    <name>Nokia 2610 Phone</name>
+    <description/>
+    <price>145.50</price>
+  </product>
+  <product>
+    <id>PR....215</id>
+    <name>CN Clogs Beach/Garden Clog</name>
+    <description/>
+    <price>190.70</price>
+  </product>
+  <product>
+    <id>PR....216</id>
+    <name>AT&amp;T 8525 PDA</name>
+    <description/>
+    <price>289.20</price>
+  </product>
+  <product>
+    <id>PR....217</id>
+    <name>Canon Digital Rebel XT 8MP Digital SLR Camera</name>
+    <description/>
+    <price>13.70</price>
+  </product>
+</products>

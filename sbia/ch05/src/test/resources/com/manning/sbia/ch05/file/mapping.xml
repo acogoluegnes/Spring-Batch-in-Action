@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!DOCTYPE mapping PUBLIC
+        "-//EXOLAB/Castor Mapping DTD Version 1.0//EN"
+        "http://castor.org/mapping.dtd">
+<mapping>
+  <class name="com.manning.sbia.ch05.Product">
+    <map-to xml="product"
+            ns-uri="http://www.manning.com/sbia/schemas"/>
+    <field name="id" type="java.lang.String">
+      <bind-xml name="id" node="element"/>
+    </field>
+    <field name="name" type="java.lang.String">
+      <bind-xml name="name" node="element"/>
+    </field>
+    <field name="description" type="java.lang.String">
+      <bind-xml name="description" node="element"/>
+    </field>
+    <field name="price" type="java.lang.Float">
+      <bind-xml name="price" node="element"/>
+    </field>
+  </class>
+</mapping>
+

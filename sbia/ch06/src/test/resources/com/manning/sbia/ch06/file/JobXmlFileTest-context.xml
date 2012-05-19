@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+    <import resource="classpath:com/manning/sbia/ch06/test-batch-infrastructure-context.xml" />
+    <import resource="classpath:com/manning/sbia/ch06/test-batch-reader-context.xml" />
+
+ 	<job id="writeProductsJob" xmlns="http://www.springframework.org/schema/batch">
+ 		<step id="readWrite">
+ 			<tasklet>
+ 				<chunk reader="productItemReader" writer="productItemWriter" commit-interval="10" />
+ 			</tasklet>
+ 		</step>
+ 	</job>
+
+    <bean id="productItemWriter" class="org.springframework.batch.item.xml.StaxEventItemWriter">
+        <property name="resource" value="file:target/outputs/products.xml" />
+        <property name="marshaller" ref="productMarshaller" />
+        <property name="rootTagName" value="products" />
+        <property name="overwriteOutput" value="true" />
+    </bean>
+    
+    <bean id="productMarshaller" class="org.springframework.oxm.xstream.XStreamMarshaller">
+        <property name="aliases">
+          <map>
+            <entry key="product" value="com.manning.sbia.ch06.Product" />
+          </map>
+        </property>
+    </bean>
+
+</beans>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd">
+		
+	<job id="notRestartableJob" restartable="false" 
+		xmlns="http://www.springframework.org/schema/batch">
+		<step id="notRestartableJobStep">
+			<tasklet ref="taskletForNotRestartableJob" />			
+		</step>
+	</job>
+	
+	<bean id="taskletForNotRestartableJob" class="org.mockito.Mockito" 
+		factory-method="mock">
+		<constructor-arg value="org.springframework.batch.core.step.tasklet.Tasklet" />
+	</bean>
+	
+	<job id="restartableJob" 
+		xmlns="http://www.springframework.org/schema/batch">
+		<step id="restartableJobStep">
+			<tasklet ref="taskletForRestartableJob" />			
+		</step>
+	</job>
+	
+	<bean id="taskletForRestartableJob" class="org.mockito.Mockito" factory-method="mock">
+		<constructor-arg value="org.springframework.batch.core.step.tasklet.Tasklet" />
+	</bean>
+	
+	<job id="importProductsJob" 
+		xmlns="http://www.springframework.org/schema/batch">
+		<step id="decompressStep" next="readWriteProductsStep">
+			<tasklet allow-start-if-complete="true" >
+				<ref bean="decompressTasklet" xmlns="http://www.springframework.org/schema/beans"/>
+			</tasklet>			
+		</step>
+		<step id="readWriteProductsStep">
+			<tasklet>
+				<ref bean="readWriteProductsTasklet" xmlns="http://www.springframework.org/schema/beans"/>
+			</tasklet>			
+		</step>
+	</job>
+	
+	<bean id="decompressTasklet" class="org.mockito.Mockito" factory-method="mock">
+		<constructor-arg value="org.springframework.batch.core.step.tasklet.Tasklet" />
+	</bean>
+	
+	<bean id="readWriteProductsTasklet" class="org.mockito.Mockito" factory-method="mock">
+		<constructor-arg value="org.springframework.batch.core.step.tasklet.Tasklet" />
+	</bean>
+	
+	<job id="importProductsLimitJob" 
+		xmlns="http://www.springframework.org/schema/batch">
+		<step id="decompressStepLimit" next="readWriteProductsStepLimit">
+			<tasklet>
+				<ref bean="decompressTasklet" xmlns="http://www.springframework.org/schema/beans"/>
+			</tasklet>			
+		</step>
+		<step id="readWriteProductsStepLimit">
+			<tasklet start-limit="3">
+				<ref bean="readWriteProductsTasklet" xmlns="http://www.springframework.org/schema/beans"/>
+			</tasklet>			
+		</step>
+	</job>
+
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<batch:job-repository id="jobRepository"
+	  data-source="dataSource" 
+	  transaction-manager="transactionManager" 
+	  />
+	
+	<bean id="jobLauncher"
+		class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+	
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.SingleConnectionDataSource">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<property name="url" value="jdbc:h2:mem:sbia_ch08_restart_behavior;DB_CLOSE_DELAY=-1" />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+		<property name="suppressClose" value="true" />
+	</bean>
+
+	<jdbc:initialize-database data-source="dataSource">
+		<jdbc:script location="classpath:/org/springframework/batch/core/schema-h2.sql"/>
+	</jdbc:initialize-database>
+
+</beans>

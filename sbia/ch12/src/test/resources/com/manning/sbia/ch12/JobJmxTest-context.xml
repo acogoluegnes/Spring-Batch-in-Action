@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<!-- Imports -->
+	
+	<import resource="classpath:/com/manning/sbia/ch12/root-database-context.xml"/>
+	<import resource="classpath:/com/manning/sbia/ch12/batch-infrastructure-context.xml"/>
+
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.SingleConnectionDataSource">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<property name="url" value="jdbc:h2:." />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+		<property name="suppressClose" value="true" />
+	</bean>
+
+	<jdbc:initialize-database data-source="dataSource">
+		<jdbc:script location="classpath:/clean-tables.sql" />
+	</jdbc:initialize-database>
+
+
+	<!-- Batch structure -->
+
+ 	<job id="importProductsJobSuccess" xmlns="http://www.springframework.org/schema/batch">
+ 		<step id="readWriteSuccess">
+ 			<tasklet>
+ 				<chunk reader="productItemReaderSuccess" writer="productItemWriter" commit-interval="100"/>
+ 			</tasklet>
+ 		</step>
+ 	</job>
+ 	
+ 	<job id="importProductsJobFailure" xmlns="http://www.springframework.org/schema/batch">
+ 		<step id="readWriteFailure">
+ 			<tasklet>
+ 				<chunk reader="productItemReaderFailure" writer="productItemWriter" commit-interval="100"/>
+ 			</tasklet>
+ 		</step>
+ 	</job>
+ 	
+ 	<!-- Product Reader --> 
+ 	
+ 	<bean id="productItemReaderSuccess"
+  		class="org.springframework.batch.item.file.FlatFileItemReader">
+ 		<property name="resource" value="classpath:/com/manning/sbia/ch12/input/products.txt"/>
+		<property name="linesToSkip" value="1"/>
+ 		<property name="lineMapper" ref="productLineMapper"/>
+ 	</bean>
+
+ 	<bean id="productItemReaderFailure"
+  		class="org.springframework.batch.item.file.FlatFileItemReader">
+ 		<property name="resource" value="classpath:/com/manning/sbia/ch12/input/products_errors.txt"/>
+		<property name="linesToSkip" value="1"/>
+ 		<property name="lineMapper" ref="productLineMapper"/>
+ 	</bean>
+
+ 	<bean id="productLineMapper"
+ 		class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+ 		<property name="lineTokenizer" ref="productLineTokenizer"/>
+ 		<property name="fieldSetMapper" ref="productFieldSetMapper"/>
+ 	</bean>
+
+	<bean id="productLineTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+ 		<property name="delimiter" value=","/>
+ 		<property name="names" value="id,name,description,price"/>
+	</bean>
+
+	<bean id="productFieldSetMapper"
+		class="org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper">
+		<property name="prototypeBeanName" value="product"/>
+	</bean>
+
+	<bean id="product" class="com.manning.sbia.ch12.domain.Product" scope="prototype"/>
+
+	<!-- Product Writer -->
+
+	<bean id="productItemPreparedStatementSetter"
+			class="com.manning.sbia.ch12.batch.ProductItemPreparedStatementSetter"/>
+	
+	<bean id="productItemWriter" class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="dataSource"/>
+		<property name="sql" value="insert into product (id,name,description,price) values(?,?,?,?)"/>
+		<property name="itemPreparedStatementSetter" ref="productItemPreparedStatementSetter"/>
+	</bean>
+
+	<!-- Job exploring -->
+	
+	<bean id="registry"
+			class="org.springframework.remoting.rmi.RmiRegistryFactoryBean">
+		<property name="port" value="1099"/>
+	</bean>
+
+	<bean id="serverConnector"
+			class="org.springframework.jmx.support.ConnectorServerFactoryBean">
+		<property name="objectName" value="connector:name=rmi"/>
+		<property name="serviceUrl" 
+				value="service:jmx:rmi://localhost/jndi/rmi://localhost:1099/myconnector"/>
+		<property name="threaded" value="true"/>
+	</bean>
+
+	<bean class="org.springframework.jmx.export.MBeanExporter">
+		<property name="beans">
+			<map>
+				<entry key="spring:service=batch,bean=jobOperator">
+					<bean class="org.springframework.aop.framework.ProxyFactoryBean">
+						<property name="target" ref="jobOperator" />
+						<property name="interceptorNames" value="exceptionTranslator" />
+					</bean>
+				</entry>
+				<!-- entry key="spring:service=batch,bean=notificationPublisher" value-ref="notificationPublisher" / -->
+				<entry key="spring:service=batch,bean=jobLoader" value-ref="loader" />
+			</map>
+		</property>
+		<property name="assembler">
+			<bean class="org.springframework.jmx.export.assembler.InterfaceBasedMBeanInfoAssembler">
+				<property name="interfaceMappings">
+					<map>
+						<entry key="spring:service=batch,bean=jobOperator"
+							value="org.springframework.batch.core.launch.JobOperator" />
+						<entry key="spring:service=batch,bean=jobLoader"
+							value="com.manning.sbia.ch12.batch.JobLoader" />
+					</map>
+				</property>
+			</bean>
+		</property>
+		<property name="notificationListenerMappings">
+			<map>
+				<entry key="*" value-ref="notificationListener"/>
+			</map>
+		</property>
+	</bean>
+
+	<bean id="notificationListener" class="com.manning.sbia.ch12.batch.JobExecutionNotificationListener" />
+
+	<bean id="jobRegistry" class="org.springframework.batch.core.configuration.support.MapJobRegistry" />
+	<bean id="jobOperator" class="org.springframework.batch.core.launch.support.SimpleJobOperator">
+		<property name="jobExplorer">
+			<bean class="org.springframework.batch.core.explore.support.JobExplorerFactoryBean">
+				<property name="dataSource" ref="dataSource" />
+			</bean>
+		</property>
+		<property name="jobRepository" ref="jobRepository" />
+		<property name="jobRegistry" ref="jobRegistry" />
+		<property name="jobLauncher">
+			<bean parent="jobLauncher">
+				<property name="taskExecutor">
+					<bean class="org.springframework.core.task.SimpleAsyncTaskExecutor" />
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="exceptionTranslator" class="org.springframework.batch.core.launch.support.RuntimeExceptionTranslator" />
+
+	<bean id="loader" class="com.manning.sbia.ch12.batch.DefaultJobLoader">
+		<property name="registry" ref="jobRegistry" />
+	</bean>
+</beans>

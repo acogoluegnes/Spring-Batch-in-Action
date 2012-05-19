@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.SingleConnectionDataSource">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<property name="url" value="jdbc:h2:tcp://localhost:9092/ch12" />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+		<property name="suppressClose" value="true" />
+	</bean>
+
+	<jdbc:initialize-database data-source="dataSource">
+		<jdbc:script location="classpath:/clean-tables.sql" />
+	</jdbc:initialize-database>
+
+
+	<!-- Batch structure -->
+
+ 	<job id="importProductsJob" xmlns="http://www.springframework.org/schema/batch">
+ 		<step id="readWrite">
+ 			<tasklet>
+ 				<chunk reader="productItemReader" writer="productItemWriter" commit-interval="100"/>
+ 			</tasklet>
+ 		</step>
+ 	</job>
+ 	
+ 	<!-- Product Reader --> 
+ 	
+ 	<bean id="productItemReader"
+  		class="org.springframework.batch.item.file.FlatFileItemReader">
+ 		<property name="resource" value="classpath:/com/manning/sbia/ch12/input/products.txt"/>
+		<property name="linesToSkip" value="1"/>
+ 		<property name="lineMapper" ref="productLineMapper"/>
+ 	</bean>
+
+ 	<bean id="productLineMapper"
+ 		class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+ 		<property name="lineTokenizer" ref="productLineTokenizer"/>
+ 		<property name="fieldSetMapper" ref="productFieldSetMapper"/>
+ 	</bean>
+
+	<bean id=" productLineTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+ 		<property name="delimiter" value=","/>
+ 		<property name="names" value="id,name,description,price"/>
+	</bean>
+
+	<bean id="productFieldSetMapper"
+		class="org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper">
+		<property name="prototypeBeanName" value="product"/>
+	</bean>
+
+	<bean id="product" class="com.manning.sbia.ch12.domain.Product" scope="prototype"/>
+
+	<!-- Product Writer -->
+
+	<bean id="productItemPreparedStatementSetter"
+			class="com.manning.sbia.ch12.batch.ProductItemPreparedStatementSetter"/>
+	
+	<bean id="productItemWriter" class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="dataSource"/>
+		<property name="sql" value="insert into product (id,name,description,price) values(?,?,?,?)"/>
+		<property name="itemPreparedStatementSetter" ref="productItemPreparedStatementSetter"/>
+	</bean>
+	
+</beans>

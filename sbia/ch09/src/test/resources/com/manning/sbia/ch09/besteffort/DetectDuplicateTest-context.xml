@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd">
+
+	<import resource="best-effort-context.xml" />
+
+	<job id="updateInventoryJob" xmlns="http://www.springframework.org/schema/batch">
+		<step id="updateInventoryStep">
+			<tasklet>
+				<chunk reader="reader" processor="processor" writer="writer"
+					commit-interval="5" reader-transactional-queue="true"
+				/>
+			</tasklet>
+		</step>
+	</job>
+	
+	<bean id="reader" class="org.springframework.batch.item.jms.JmsItemReader">
+		<property name="jmsTemplate" ref="jmsTemplate" />
+		<property name="itemType" value="javax.jms.Message" />
+	</bean>
+	
+	<bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+		<property name="connectionFactory" ref="connectionFactory" />
+		<property name="defaultDestination" ref="orderQueue" />
+		<property name="receiveTimeout" value="100" />
+		<property name="sessionTransacted" value="true" />
+	</bean>
+	
+	<bean id="processor" class="com.manning.sbia.ch09.batch.DuplicateOrderItemProcessor">
+		<constructor-arg ref="dataSource" />
+	</bean>
+	
+	<bean id="writer" class="com.manning.sbia.ch09.batch.InventoryOrderWriter">
+		<constructor-arg ref="dataSource" />
+	</bean>
+	
+	<job id="updateInventoryJobWithMockReader" xmlns="http://www.springframework.org/schema/batch">
+		<step id="updateInventoryWithMockReader">
+			<tasklet>
+				<chunk reader="mockReader" processor="processor" writer="writer"
+					commit-interval="5" reader-transactional-queue="true"
+				/>
+			</tasklet>
+		</step>
+	</job>
+	
+	<bean id="mockReader" class="org.mockito.Mockito" factory-method="mock">
+		<constructor-arg value="org.springframework.batch.item.ItemReader" />
+	</bean>
+
+	<jdbc:initialize-database>
+		<jdbc:script location="classpath:/com/manning/sbia/ch09/besteffort/create-inventory-tables.sql"/>
+		<jdbc:script location="classpath:/com/manning/sbia/ch09/besteffort/insert-inventory-data.sql"/>
+	</jdbc:initialize-database>
+
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.SingleConnectionDataSource">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<property name="url" value="jdbc:h2:mem:sbia_ch09_besteffort_detect_duplicate;DB_CLOSE_DELAY=-1" />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+		<property name="suppressClose" value="true" />
+	</bean>
+
+	<bean id="orderQueue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg value="sbia.queue.order"/>
+	</bean>
+	
+	<bean id="orderQueueView" class="org.springframework.jmx.access.MBeanProxyFactoryBean">
+		<property name="proxyInterface" value="org.apache.activemq.broker.jmx.QueueViewMBean"/>
+		<property name="objectName" value="org.apache.activemq:BrokerName=embedded,Type=Queue,Destination=sbia.queue.order"/>
+	</bean>
+
+</beans>

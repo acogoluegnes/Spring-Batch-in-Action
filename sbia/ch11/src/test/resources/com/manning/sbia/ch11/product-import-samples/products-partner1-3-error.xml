@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<products import-id="partner1-3">
+	<product>
+		<id>216</id>
+		<name>CN Clogs Beach/Garden Clog</name>
+		<description>CN Clogs Beach/Garden Clog</description>
+		<price>190.70</price>
+	</product>
+	<product>
+		<idtypo>217</idtypo>
+		<name>ATT 8525 PDA</name>
+		<description>ATT 8525 PDA</description>
+		<price>289.20</price>
+	</product>
+	<product>
+		<id>218</id>
+		<name>Canon Digital Rebel</name>
+		<description>Canon Digital Rebel</description>
+		<price>13.70</price>
+	</product>
+</products>

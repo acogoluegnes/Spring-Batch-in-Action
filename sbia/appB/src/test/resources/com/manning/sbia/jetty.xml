@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<!DOCTYPE Configure PUBLIC "-//Mort Bay Consulting//DTD Configure//EN" "http://jetty.mortbay.org/configure.dtd">
+<Configure id="Server" class="org.mortbay.jetty.Server">
+
+	<New id="NRJProvisoireDB" class="org.mortbay.jetty.plus.naming.Resource">
+    	<Arg>java:comp/env/jdbc/SpringBatchAdmin</Arg>
+    	<Arg>
+	     	<New class="org.apache.commons.dbcp.BasicDataSource">
+	                 <Set name="driverClassName">org.h2.Driver</Set>
+	                 <Set name="url">jdbc:h2:tcp://localhost/sbia_appB;IFEXISTS=TRUE</Set>
+	                 <Set name="username">sa</Set>
+	                 <Set name="password"></Set>
+	     	</New>
+    	</Arg>
+	</New>
+
+	<Call name="addConnector">
+		<Arg>
+			<New class="org.mortbay.jetty.nio.SelectChannelConnector">
+				<Set name="port">8081</Set>
+			</New>
+		</Arg>
+	</Call>
+	<Set name="handler">
+		<New id="Handlers" class="org.mortbay.jetty.handler.HandlerCollection">
+			<Set name="handlers">
+				<Array type="org.mortbay.jetty.Handler">
+					<Item>
+						<New id="Contexts" class="org.mortbay.jetty.webapp.WebAppContext">
+							<Set name="defaultsDescriptor">./src/test/resources/com/manning/sbia/webdefault.xml</Set>
+							<Set name="contextPath">/springbatchadmin</Set>
+							<Set name="war">./src/main/webapp</Set>
+						</New>
+					</Item>              
+				</Array>
+
+			</Set>
+		</New>
+	</Set>
+	<Set name="stopAtShutdown">true</Set>
+	<Set name="sendServerVersion">true</Set>
+	<Set name="sendDateHeader">true</Set>
+	<Set name="gracefulShutdown">1000</Set>
+</Configure>

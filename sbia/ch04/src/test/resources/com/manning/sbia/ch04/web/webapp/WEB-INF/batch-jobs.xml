@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<batch:job id="scheduledJob">
+		<batch:step id="scheduledStep">
+			<batch:tasklet>				
+				<bean class="com.manning.sbia.ch04.CountDownTasklet">
+					<property name="countDownLatch" ref="countDownLatch" />
+				</bean>
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+	
+	<bean class="java.util.concurrent.CountDownLatch" id="countDownLatch">
+		<constructor-arg value="2" />
+	</bean>
+	
+	<batch:job id="importProductsJob">
+		<batch:step id="trackParamsStep">
+			<batch:tasklet>
+				<bean class="com.manning.sbia.ch04.web.JobParameterAwareTasklet">
+					<property name="params" ref="params" />
+				</bean>
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+	
+	<bean id="params" class="java.util.HashMap" />
+
+</beans>

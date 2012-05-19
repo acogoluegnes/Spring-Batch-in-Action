@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<products import-id="partner1-2">
+	<product>
+		<id>212</id>
+		<name>some phone</name>
+		<description>Sony Ericsson W810i</description>
+		<price>139.45</price>
+	</product>
+	<product>
+		<id>213</id>
+		<name>Samsung MM-A900M Ace</name>
+		<description>Samsung MM-A900M Ace</description>
+		<price>97.80</price>
+	</product>
+	<product>
+		<id>214</id>
+		<name>Toshiba M285-E 14</name>
+		<description>Toshiba M285-E 14</description>
+		<price>166.20</price>
+	</product>
+	<product>
+		<id>215</id>
+		<name>Nokia 2610 Phone</name>
+		<description>Nokia 2610 Phone</description>
+		<price>145.50</price>
+	</product>
+</products>

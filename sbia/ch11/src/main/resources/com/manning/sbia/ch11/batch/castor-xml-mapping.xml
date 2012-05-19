@@ -1,0 +1,29 @@
+<mapping>
+
+	<class name="com.manning.sbia.ch01.domain.Product" identity="id">
+		<map-to xml="product" />
+		<field name="id" type="string">
+			<bind-xml name="id" node="element" />
+		</field>
+		<field name="name" type="string">
+			<bind-xml name="name" node="element" />
+		</field>
+		<field name="description" type="string">
+			<bind-xml name="description" node="element" />
+		</field>
+		<field name="price" type="big-decimal">
+			<bind-xml name="price" node="element"/>
+		</field>
+	</class>
+	
+	<class name="com.manning.sbia.ch11.integration.ProductImport">
+		<map-to xml="product-import" />
+		<field name="importId" type="string">
+			<bind-xml name="import-id" node="element" />
+		</field>
+		<field name="state" type="string">
+			<bind-xml name="state" node="element" />
+		</field>
+	</class>
+
+</mapping>	

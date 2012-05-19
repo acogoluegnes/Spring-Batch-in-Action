@@ -1,0 +1,14 @@
+insert into orders (order_id,shipped) values ('1',0);
+insert into orders (order_id,shipped) values ('2',0);
+insert into orders (order_id,shipped) values ('3',0);
+insert into orders (order_id,shipped) values ('4',0);
+insert into orders (order_id,shipped) values ('5',0);
+insert into orders (order_id,shipped) values ('6',0);
+insert into orders (order_id,shipped) values ('7',0);
+insert into orders (order_id,shipped) values ('8',0);
+insert into orders (order_id,shipped) values ('9',0);
+insert into orders (order_id,shipped) values ('10',0);
+insert into orders (order_id,shipped) values ('11',0);
+insert into orders (order_id,shipped) values ('12',0);
+insert into orders (order_id,shipped) values ('13',0);
+insert into orders (order_id,shipped) values ('14',0);

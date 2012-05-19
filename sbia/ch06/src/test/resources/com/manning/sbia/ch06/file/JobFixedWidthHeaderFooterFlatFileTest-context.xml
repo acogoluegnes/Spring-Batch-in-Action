@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:batch="http://www.springframework.org/schema/batch"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+  <import resource="classpath:com/manning/sbia/ch06/test-batch-infrastructure-context.xml" />
+  <import resource="classpath:com/manning/sbia/ch06/test-batch-reader-context.xml" />
+
+  <job id="writeProductsJob" xmlns="http://www.springframework.org/schema/batch">
+    <step id="readWrite">
+      <tasklet>
+        <chunk reader="productItemReader" writer="productItemWriter" commit-interval="10" />
+        <listeners>
+          <listener ref="footerCallback" />
+        </listeners>
+      </tasklet>
+    </step>
+  </job>
+
+  <bean id="productItemWriter" class="org.springframework.batch.item.file.FlatFileItemWriter">
+    <property name="resource" value="file:target/outputs/fixedwidth-headerfooter.txt" />
+    <property name="headerCallback" ref="headerCallback" />
+    <property name="footerCallback" ref="footerCallback" />
+    <property name="lineAggregator">
+      <bean class="org.springframework.batch.item.file.transform.FormatterLineAggregator">
+        <property name="fieldExtractor">
+          <bean class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+            <property name="names" value="id,price,name" />
+          </bean>
+        </property>
+        <property name="format" value="%-9s%6.2f%-30s" />
+      </bean>
+    </property>
+  </bean>
+
+  <bean id="headerCallback" class="com.manning.sbia.ch06.file.ProductHeaderCallback" />
+  <bean id="footerCallback" class="com.manning.sbia.ch06.file.ProductFooterCallback" />
+
+</beans>

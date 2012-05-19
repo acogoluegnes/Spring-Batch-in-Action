@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<import resource="tasklet-definition.xml" />
+	
+	<bean id="verifyTasklet" class="com.manning.sbia.ch10.tasklet.VerifyStoreInStepContextTasklet" scope="step">
+		<property name="batchService" ref="batchService" />
+		<property name="outputDirectory" value="#{jobParameters['workingDirectory']}" />
+	</bean>
+	
+	<bean id="trackImportTasklet" class="com.manning.sbia.ch10.tasklet.TrackImportFromJobContextTasklet">
+		<property name="batchService" ref="batchService" />
+	</bean>
+
+	<job id="importProductsJob" xmlns="http://www.springframework.org/schema/batch">
+		<step id="downloadStep" next="someFileDownloadedDecision">
+			<tasklet ref="downloadTasklet" />
+		</step>
+		<decision id="someFileDownloadedDecision" decider="fileExistsDecider">
+			<end on="NO FILE" />
+			<next on="FILE EXISTS" to="decompressStep" />
+		</decision>
+		<step id="decompressStep" next="verifyStep">
+			<tasklet ref="decompressTasklet" />
+		</step>
+		<step id="verifyStep" next="readWriteStep">
+			<tasklet ref="verifyTasklet">
+				<listeners>
+					<listener ref="executionContextPromotionListener" />
+				</listeners>
+			</tasklet>			
+		</step>
+		<step id="readWriteStep" next="skippedItemsDecision">
+			<tasklet ref="readWriteProductsTasklet" />
+		</step>
+		<decision id="skippedItemsDecision" decider="skippedItemsDecider">
+			<next on="COMPLETED WITH SKIPS" to="generateReportStep" />
+			<next on="*" to="indexStep" />
+		</decision>
+		<step id="generateReportStep" next="indexStep">
+			<tasklet ref="generateReportTasklet" />
+		</step>
+		<step id="indexStep" next="trackImportStep">
+			<tasklet ref="indexTasklet" />
+		</step>
+		<step id="trackImportStep" next="cleanStep">
+			<tasklet ref="trackImportTasklet" />
+		</step>
+		<step id="cleanStep">
+			<tasklet ref="cleanTasklet" />
+		</step>
+	</job>
+	
+	<bean id="executionContextPromotionListener" class="org.springframework.batch.core.listener.ExecutionContextPromotionListener">
+		<property name="keys" value="importId" />
+	</bean>	
+	
+	<bean id="fileExistsDecider" class="com.manning.sbia.ch10.decider.FileExistsDecider">
+		<property name="batchService" ref="batchService" />
+	</bean>
+	
+	<bean id="skippedItemsDecider" class="com.manning.sbia.ch10.decider.SkippedItemsDecider" />
+	
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.SingleConnectionDataSource">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<property name="url" value="jdbc:h2:mem:sbia_ch10_transmit_step_context;DB_CLOSE_DELAY=-1" />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+		<property name="suppressClose" value="true" />
+	</bean>
+
+</beans>

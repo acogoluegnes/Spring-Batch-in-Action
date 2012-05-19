@@ -1,0 +1,6 @@
+PRODUCT_ID,NAME,DESCRIPTION,SPECIFIC,PRICE
+PRM....210,BlackBerry 8100 Pearl,,BlackBerry,124.60
+PRM....211,Sony Ericsson W810i,,Sony Ericson,139.45
+PRM....212,Samsung MM-A900M Ace,,Samsung,97.80
+PRM....213,Toshiba M285-E 14,,Toshiba,166.20
+PRM....214,Nokia 2610 Phone,,Nokia,145.50

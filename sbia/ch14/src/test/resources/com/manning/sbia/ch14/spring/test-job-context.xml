@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:batch="http://www.springframework.org/schema/batch" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+  xmlns:aop="http://www.springframework.org/schema/aop"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd">
+
+  <import
+    resource="classpath:com/manning/sbia/ch14/spring/test-batch-infrastructure-context.xml" />
+
+  <job id="import" xmlns="http://www.springframework.org/schema/batch">
+    <validator ref="jobValidator" />
+    <step id="productsStep" next="nextDecision">
+      <tasklet>
+        <chunk reader="reader" writer="writer" processor="processor"
+          commit-interval="2">
+          <streams>
+            <stream ref="excludeWriter" />
+          </streams>
+        </chunk>
+        <listeners>
+          <listener ref="productItemListener" />
+        </listeners>
+      </tasklet>
+    </step>
+    <decision id="nextDecision" decider="nextDecider">
+      <next on="NEXT" to="statisticStep" />
+      <next on="*" to="cleanStep" />
+    </decision>
+    <step id="statisticStep" next="cleanStep">
+      <tasklet>
+        <chunk reader="statisticReader" writer="statisticWriter"
+          commit-interval="2" />
+      </tasklet>
+    </step>
+    <step id="cleanStep">
+      <tasklet ref="cleanTasklet" />
+    </step>
+  </job>
+
+  <bean id="jobValidator" class="com.manning.sbia.ch14.batch.ImportValidator" />
+
+  <bean id="reader" class="org.springframework.batch.item.file.FlatFileItemReader"
+    scope="step">
+    <property name="resource" value="#{jobParameters['inputResource']}" />
+    <property name="linesToSkip" value="1" />
+    <property name="lineMapper">
+      <bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+        <property name="lineTokenizer">
+          <bean
+            class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+            <property name="names" value="ID,NAME,DESCRIPTION,PRICE" />
+          </bean>
+        </property>
+        <property name="fieldSetMapper">
+          <bean class="com.manning.sbia.ch14.batch.ProductFieldSetMapper" />
+        </property>
+      </bean>
+    </property>
+  </bean>
+
+  <bean id="processor" class="org.springframework.batch.item.support.CompositeItemProcessor"
+    scope="step">
+    <property name="delegates">
+      <list>
+        <bean class="org.springframework.batch.item.validator.ValidatingItemProcessor">
+          <property name="filter" value="true" />
+          <property name="validator">
+            <bean
+              class="com.manning.sbia.ch14.batch.validation.PriceMandatoryValidator" />
+          </property>
+        </bean>
+        <bean class="org.springframework.batch.item.validator.ValidatingItemProcessor">
+          <property name="filter" value="true" />
+          <property name="validator">
+            <bean
+              class="com.manning.sbia.ch14.batch.validation.PositivePriceValidator" />
+          </property>
+        </bean>
+      </list>
+    </property>
+  </bean>
+
+  <bean id="productItemListener" class="com.manning.sbia.ch14.batch.ProductItemListener">
+    <property name="excludeWriter" ref="excludeWriter" />
+  </bean>
+
+  <bean id="writer" class="com.manning.sbia.ch14.batch.ProductItemWriter">
+    <property name="simpleJdbcTemplate" ref="simpleJdbcTemplate" />
+    <property name="itemSqlParameterSourceProvider">
+      <bean
+        class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+    </property>
+  </bean>
+
+  <bean id="excludeWriter" class="org.springframework.batch.item.file.FlatFileItemWriter">
+    <property name="resource" value="file:./target/excludes.txt" />
+    <property name="lineAggregator">
+      <bean
+        class="org.springframework.batch.item.file.transform.PassThroughLineAggregator" />
+    </property>
+  </bean>
+
+  <bean id="nextDecider" class="com.manning.sbia.ch14.batch.NextDecider" />
+
+  <bean id="statisticReader" class="org.springframework.batch.item.database.JdbcCursorItemReader">
+    <property name="dataSource" ref="dataSource" />
+    <property name="rowMapper">
+      <bean class="org.springframework.jdbc.core.SingleColumnRowMapper">
+        <constructor-arg value="java.math.BigDecimal" />
+      </bean>
+    </property>
+    <property name="sql">
+      <value>SELECT AVG(PRICE) FROM PRODUCT</value>
+    </property>
+  </bean>
+
+  <bean id="statisticWriter" class="org.springframework.batch.item.file.FlatFileItemWriter"
+    scope="step">
+    <property name="resource" value="#{jobParameters['reportResource']}" />
+    <property name="lineAggregator">
+      <bean
+        class="org.springframework.batch.item.file.transform.PassThroughLineAggregator" />
+    </property>
+  </bean>
+
+  <bean id="cleanTasklet" class="com.manning.sbia.ch14.batch.CleanTasklet" />
+</beans>

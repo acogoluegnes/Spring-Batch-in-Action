@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/beans/spring-aop-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<bean id="registry"
+			class="org.springframework.remoting.rmi.RmiRegistryFactoryBean">
+		<property name="port" value="1099"/>
+	</bean>
+
+	<bean id="serverConnector"
+			class="org.springframework.jmx.support.ConnectorServerFactoryBean">
+		<property name="objectName" value="connector:name=rmi"/>
+		<property name="serviceUrl" 
+				value="service:jmx:rmi://localhost/jndi/rmi://localhost:1099/myconnector"/>
+		<property name="threaded" value="true"/>
+	</bean>
+
+	<bean class="org.springframework.jmx.export.MBeanExporter">
+		<property name="beans">
+			<map>
+				<entry key="spring:service=batch,bean=jobOperator">
+					<bean class="org.springframework.aop.framework.ProxyFactoryBean">
+						<property name="target" ref="jobOperator" />
+						<property name="interceptorNames" value="exceptionTranslator" />
+					</bean>
+				</entry>
+				<!-- entry key="spring:service=batch,bean=notificationPublisher" value-ref="notificationPublisher" / -->
+				<entry key="spring:service=batch,bean=jobLoader" value-ref="loader" />
+			</map>
+		</property>
+		<property name="assembler">
+			<bean class="org.springframework.jmx.export.assembler.InterfaceBasedMBeanInfoAssembler">
+				<property name="interfaceMappings">
+					<map>
+						<entry key="spring:service=batch,bean=jobOperator"
+							value="org.springframework.batch.core.launch.JobOperator" />
+						<entry key="spring:service=batch,bean=jobLoader"
+							value="com.manning.sbia.ch12.batch.JobLoader" />
+					</map>
+				</property>
+			</bean>
+		</property>
+		<property name="notificationListenerMappings">
+			<map>
+				<entry key="*" value-ref="notificationListener"/>
+			</map>
+		</property>
+	</bean>
+
+	<!-- bean id="applicationEventMonitoringNotifier" class="com.manning.sbia.ch12.batch.ApplicationEventMonitoringNotifier"/>
+
+	<bean id="notificationPublisher" class="com.manning.sbia.ch12.batch.JobExecutionNotificationPublisher" / -->
+	<bean id="notificationListener" class="com.manning.sbia.ch12.batch.JobExecutionNotificationListener" />
+
+	<bean id="jobRegistry" class="org.springframework.batch.core.configuration.support.MapJobRegistry" />
+	<bean id="jobOperator" class="org.springframework.batch.core.launch.support.SimpleJobOperator">
+		<property name="jobExplorer">
+			<bean class="org.springframework.batch.core.explore.support.JobExplorerFactoryBean">
+				<property name="dataSource" ref="dataSource" />
+			</bean>
+		</property>
+		<property name="jobRepository" ref="jobRepository" />
+		<property name="jobRegistry" ref="jobRegistry" />
+		<property name="jobLauncher">
+			<bean parent="jobLauncher">
+				<property name="taskExecutor">
+					<bean class="org.springframework.core.task.SimpleAsyncTaskExecutor" />
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="exceptionTranslator" class="org.springframework.batch.core.launch.support.RuntimeExceptionTranslator" />
+
+	<bean id="loader" class="com.manning.sbia.ch12.batch.DefaultJobLoader">
+		<property name="registry" ref="jobRegistry" />
+	</bean>
+
+</beans>

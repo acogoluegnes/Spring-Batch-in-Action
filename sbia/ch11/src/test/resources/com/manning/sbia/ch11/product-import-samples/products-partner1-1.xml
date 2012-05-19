@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<products import-id="partner1-1">
+	<product>
+		<id>211</id>
+		<name>BlackBerry 8100 Pearl</name>
+		<description>BlackBerry 8100 Pearl</description>
+		<price>124.60</price>
+	</product>
+</products>
